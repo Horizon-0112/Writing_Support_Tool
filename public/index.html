@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paper Outline Generator</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- ============================== -->
+        <!-- STEP 1: INPUT VIEW             -->
+        <!-- ============================== -->
+        <div id="step-1" class="view-step active">
+            <!-- LEFT SIDEBAR -->
+            <aside class="sidebar glass-panel">
+                <div class="logo-area">
+                    <i class="fa-solid fa-layer-group logo-icon"></i>
+                    <h2>OutlineGen</h2>
+                </div>
+
+                <div class="settings-group">
+                    <label for="languageSelect"><i class="fa-solid fa-globe"></i> Output Language</label>
+                    <div class="custom-select">
+                        <select id="languageSelect">
+                            <option value="en-US">English (US)</option>
+                            <option value="ko-KR">Korean (한국어)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <label for="categoryInput"><i class="fa-solid fa-tags"></i> Category</label>
+                    <input type="text" id="categoryInput" class="custom-input" placeholder="e.g. Computer Science, Biology">
+                </div>
+
+                <div class="settings-group">
+                    <label for="formatSelect"><i class="fa-solid fa-file-contract"></i> Standard Format</label>
+                    <div class="custom-select">
+                        <select id="formatSelect">
+                            <option value="IEEE">IEEE Standard</option>
+                            <option value="Nature">Nature Portfolio</option>
+                            <option value="ACM">ACM Transactions</option>
+                            <option value="ArXiv">ArXiv Preprint</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="sidebar-footer">
+                    <button id="generateBtn" class="primary-btn">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Generate
+                    </button>
+                </div>
+            </aside>
+
+            <!-- MAIN CONTENT -->
+            <main class="main-content">
+                <section class="input-section glass-panel">
+                    <div class="header-content">
+                        <h1>Draft Your Paper Outline</h1>
+                        <p>Enter your keywords, research data, or upload an image to start generating a structured outline.</p>
+                    </div>
+
+                    <div class="input-area">
+                        <textarea id="userInput" placeholder="Type your keywords, hypothesis, or data here... (e.g. 'A new machine learning algorithm for predicting stock prices...')" rows="8"></textarea>
+                        
+                        <div class="upload-area" id="dropZone">
+                            <input type="file" id="imageUpload" accept="image/*" hidden>
+                            <div class="upload-content">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                                <span>Drag & drop a graph/image or <strong>browse</strong></span>
+                            </div>
+                            <img id="imagePreview" src="" alt="Preview" style="display: none;">
+                            <button class="remove-image-btn" id="removeImageBtn" style="display: none;"><i class="fa-solid fa-times"></i></button>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+
+        <!-- ============================== -->
+        <!-- STEP 2: SELECTION VIEW         -->
+        <!-- ============================== -->
+        <div id="step-2" class="view-step">
+            <header class="step-header glass-panel">
+                <button id="backToStep1Btn" class="secondary-btn"><i class="fa-solid fa-arrow-left"></i> Back to Edit</button>
+                <h2>Compare AI Results</h2>
+                <div style="width: 120px;"></div> <!-- spacer -->
+            </header>
+
+            <div class="results-grid">
+                
+                <!-- Gemini Card -->
+                <div class="result-card glass-panel" id="card-gemini">
+                    <div class="card-header">
+                        <div class="ai-info">
+                            <i class="fa-solid fa-cube text-gemini"></i>
+                            <h3>Gemini 1.5 Pro</h3>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="placeholder-text">Waiting for input...</div>
+                        <div class="loading-spinner" style="display: none;">
+                            <div class="spinner"></div>
+                            <span>Generating...</span>
+                        </div>
+                        <div class="markdown-content" id="content-gemini" style="display: none;"></div>
+                    </div>
+                    <div class="card-footer">
+                        <button class="select-btn" data-target="gemini" disabled><i class="fa-solid fa-check"></i> Select This Outline</button>
+                    </div>
+                </div>
+
+                <!-- GPT Card -->
+                <div class="result-card glass-panel" id="card-gpt">
+                    <div class="card-header">
+                        <div class="ai-info">
+                            <i class="fa-solid fa-brain text-gpt"></i>
+                            <h3>GPT-4o</h3>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="placeholder-text">Waiting for input...</div>
+                        <div class="loading-spinner" style="display: none;">
+                            <div class="spinner"></div>
+                            <span>Generating...</span>
+                        </div>
+                        <div class="markdown-content" id="content-gpt" style="display: none;"></div>
+                    </div>
+                    <div class="card-footer">
+                        <button class="select-btn" data-target="gpt" disabled><i class="fa-solid fa-check"></i> Select This Outline</button>
+                    </div>
+                </div>
+
+                <!-- Claude Card -->
+                <div class="result-card glass-panel" id="card-claude">
+                    <div class="card-header">
+                        <div class="ai-info">
+                            <i class="fa-solid fa-robot text-claude"></i>
+                            <h3>Claude 3.5 Sonnet</h3>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="placeholder-text">Waiting for input...</div>
+                        <div class="loading-spinner" style="display: none;">
+                            <div class="spinner"></div>
+                            <span>Generating...</span>
+                        </div>
+                        <div class="markdown-content" id="content-claude" style="display: none;"></div>
+                    </div>
+                    <div class="card-footer">
+                        <button class="select-btn" data-target="claude" disabled><i class="fa-solid fa-check"></i> Select This Outline</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+        <!-- ============================== -->
+        <!-- STEP 3: PREVIEW VIEW           -->
+        <!-- ============================== -->
+        <div id="step-3" class="view-step">
+            <header class="step-header glass-panel">
+                <button id="backToStep2Btn" class="secondary-btn"><i class="fa-solid fa-arrow-left"></i> Back to Selection</button>
+                <h2>Final Preview</h2>
+                <button id="downloadPdfBtn" class="primary-btn-small"><i class="fa-solid fa-download"></i> Download PDF</button>
+            </header>
+
+            <div class="document-preview-wrapper">
+                <div id="documentPreview" class="document-paper markdown-content">
+                    <!-- Final selected content goes here -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Libraries -->
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- html2pdf for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Main Script -->
+    <script src="script.js"></script>
+</body>
+</html>
