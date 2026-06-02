@@ -126,7 +126,7 @@ function buildPrompt(userInput, format, language, imageData) {
             role: "당신은 문서 재배치기(Document Reorganizer)입니다.",
             task: "사용자가 제공한 문장만 사용하고, 새로운 정보, 숫자, 표, 참고문헌, 실험 결과, 성능 지표, 하드웨어 환경, 데이터셋 정보, 알고리즘 설명, 분석 결과를 추가하지 마십시오.",
             structure: "선택된 포맷을 반영하여 문서 구조를 구성하십시오.",
-            imageInstruction: "이미지가 첨부된 경우, 이미지 데이터를 직접 해석하여 문서에 반영하되 제공되지 않은 내용을 생성하지 마십시오.",
+            imageInstruction: "이미지가 첨부된 경우, 이미지가 들어갈 위치를 명확하게 지정하는 자리 표시자를 포함하십시오. 실제 이미지 내용을 추측하지 말고 'Image 1 placeholder' 또는 'Figure 1 placeholder' 형태로 지정하십시오.",
             contentHeader: "사용자 입력:",
             promptEnd: "위 내용을 바탕으로 문서 형식에 맞게 재배치하십시오. 정보가 부족하면 섹션 제목과 제공된 문장만 배치하고, 제공되지 않은 내용을 새로 작성하지 마십시오."
         },
@@ -135,7 +135,7 @@ function buildPrompt(userInput, format, language, imageData) {
             role: "You are a Document Reorganizer.",
             task: "Use only the sentences provided by the user, and do not add any new information, numbers, tables, references, experimental results, performance metrics, hardware environment, dataset details, algorithm descriptions, or analysis conclusions.",
             structure: "Organize the document according to the selected format.",
-            imageInstruction: "If images are attached, interpret the image data directly and incorporate it without generating any content not provided.",
+            imageInstruction: "If images are attached, include explicit placeholders indicating where each image should appear, such as 'Image 1 placeholder' or 'Figure 1 placeholder'. Do not invent image details beyond what is clearly provided.",
             contentHeader: "User input:",
             promptEnd: "Reorganize the content into the document format. If information is insufficient, include only section headings and the provided sentences, and do not create new content for missing sections."
         }
@@ -145,8 +145,12 @@ function buildPrompt(userInput, format, language, imageData) {
     const trimmedInput = userInput ? String(userInput).trim() : "";
     let imageContext = "";
     if (imageData && imageData.length) {
-        imageContext = `\n\n[Image data attached]: ${imageData.length} images are included. ${langTemplate.imageInstruction}`;
+        imageContext = `\n\n[Images attached]: ${imageData.length} images are included. ${langTemplate.imageInstruction}`;
     }
+
+    const fallbackContent = language === 'ko-KR'
+        ? '사용자가 세부 내용을 제공하지 않았습니다. 선택된 형식에 맞는 기본 논문 개요 골격을 생성하십시오. 도입, 방법, 결과, 결론 등 기본 섹션 제목을 포함하고 구체적 연구 결과는 추가하지 마십시오.'
+        : 'The user has not provided any specific details. Generate a basic paper outline skeleton for the selected format. Include standard section headings like Introduction, Methods, Results, and Conclusion, without inventing specific results.';
 
     const systemPrompt = `${langTemplate.role}
 ${langTemplate.task}
@@ -158,7 +162,7 @@ Format guidance: ${formatInstruction}`;
     return {
         systemPrompt,
         content: `${langTemplate.contentHeader}
-${trimmedInput}${imageContext}
+${trimmedInput || fallbackContent}${imageContext}
 
 ${langTemplate.promptEnd}`
     };
