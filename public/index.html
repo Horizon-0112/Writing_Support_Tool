@@ -86,7 +86,8 @@
                                     <p>Write the core idea, keywords, research goal, or data summary.</p>
                                 </div>
                             </div>
-                            <textarea id="userInput" placeholder="Type your keywords, hypothesis, or data here... (e.g. 'A new machine learning algorithm for predicting stock prices...')" rows="8"></textarea>
+                            <textarea id="userInput" placeholder="Type your keywords, hypothesis, or data here... (e.g. 'A new machine learning algorithm for predicting stock prices...')" rows="8" maxlength="5000"></textarea>
+                            <div class="char-count"><span id="charCount">0</span>/5000</div>
                         </div>
 
                         <div class="form-card">
@@ -104,7 +105,7 @@
                                     <i class="fa-solid fa-cloud-arrow-up"></i>
                                     <span>Drag & drop graphs/images or <strong>browse</strong></span>
                                 </div>
-                                <div class="upload-info" id="uploadInfo">최대 10개 이미지, 개별 파일 최대 5MB.</div>
+                                <div class="upload-info" id="uploadInfo">Maximum 10 images, 5MB per file.</div>
                                 <div class="preview-list" id="imagePreviewList"></div>
                             </div>
                         </div>
@@ -215,8 +216,8 @@
     <!-- Libraries -->
     <!-- Marked.js for Markdown parsing -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- html2pdf for PDF export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- jsPDF for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- Main Script -->
     <script src="script.js"></script>
 </body>

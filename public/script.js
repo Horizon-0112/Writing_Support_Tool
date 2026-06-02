@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const generateBtn = document.getElementById('generateBtn');
     const userInput = document.getElementById('userInput');
+    const charCount = document.getElementById('charCount');
     const formatSelect = document.getElementById('formatSelect');
     const languageSelect = document.getElementById('languageSelect');
 
@@ -30,7 +31,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const MAX_FILES = 10;
     const MAX_FILE_SIZE_MB = 5;
     const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+    const MAX_TEXT_LENGTH = 5000;
     let imageFiles = [];
+
+    // --- Text input character counter ---
+    userInput.addEventListener('input', () => {
+        charCount.textContent = userInput.value.length;
+    });
 
     dropZone.addEventListener('click', () => {
         imageUpload.click();
@@ -62,18 +69,18 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleFiles(files) {
         const selectedImages = files.filter(file => file.type.startsWith('image/'));
         if (!selectedImages.length) {
-            alert('이미지 파일만 업로드할 수 있습니다.');
+            alert('Only image files can be uploaded.');
             return;
         }
 
         if (imageFiles.length + selectedImages.length > MAX_FILES) {
-            alert(`최대 ${MAX_FILES}개의 이미지만 업로드할 수 있습니다.`);
+            alert(`Maximum ${MAX_FILES} images can be uploaded.`);
             return;
         }
 
         const oversized = selectedImages.filter(file => file.size > MAX_FILE_SIZE_BYTES);
         if (oversized.length) {
-            alert(`각 파일의 최대 용량은 ${MAX_FILE_SIZE_MB}MB입니다.`);
+            alert(`Maximum file size is ${MAX_FILE_SIZE_MB}MB.`);
             return;
         }
 
@@ -88,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     base64: fullBase64.split(',')[1]
                 });
             };
-            reader.onerror = () => reject(new Error('파일을 읽는 중 오류가 발생했습니다.'));
+            reader.onerror = () => reject(new Error('Error reading file.'));
             reader.readAsDataURL(file);
         }));
 
@@ -100,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .catch(error => {
                 console.error(error);
-                alert('이미지 업로드 중 오류가 발생했습니다.');
+                alert('Error uploading image.');
             });
     }
 
@@ -108,12 +115,12 @@ document.addEventListener('DOMContentLoaded', () => {
         imagePreviewList.innerHTML = '';
         if (!imageFiles.length) {
             uploadContent.style.display = 'flex';
-            uploadInfo.textContent = `최대 ${MAX_FILES}개 이미지, 개별 파일 최대 ${MAX_FILE_SIZE_MB}MB.`;
+            uploadInfo.textContent = `Maximum ${MAX_FILES} images, ${MAX_FILE_SIZE_MB}MB per file.`;
             return;
         }
 
         uploadContent.style.display = 'none';
-        uploadInfo.textContent = `${imageFiles.length}/${MAX_FILES}개 업로드됨 · 각 파일 최대 ${MAX_FILE_SIZE_MB}MB`;
+        uploadInfo.textContent = `${imageFiles.length}/${MAX_FILES} uploaded · Maximum ${MAX_FILE_SIZE_MB}MB per file`;
 
         imageFiles.forEach((item, index) => {
             const thumb = document.createElement('div');
@@ -135,6 +142,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderPreviews();
             });
         });
+    }
+
+    function resetForm() {
+        userInput.value = '';
+        formatSelect.value = 'IEEE';
+        languageSelect.value = 'en-US';
+        imageFiles = [];
+        imageUpload.value = '';
+        renderPreviews();
+        lastPayloadStr = null;
+        generatedData = {};
+        documentPreview.innerHTML = '';
+
+        document.querySelectorAll('.select-btn').forEach(btn => btn.disabled = true);
+        document.querySelectorAll('.markdown-content').forEach(div => {
+            div.innerHTML = '';
+            div.style.display = 'none';
+        });
+        document.querySelectorAll('.loading-spinner').forEach(spinner => spinner.style.display = 'none');
+        document.querySelectorAll('.placeholder-text').forEach(text => text.style.display = 'block');
     }
 
     // --- Navigation Functions ---
@@ -160,6 +187,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!text && !imageFiles.length) {
             alert('Please provide keywords or an image.');
+            return;
+        }
+
+        if (text.length > MAX_TEXT_LENGTH) {
+            alert(`Text is too long. Maximum ${MAX_TEXT_LENGTH} characters allowed.`);
             return;
         }
 
@@ -226,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
             contentDiv.style.display = 'block';
 
             if (data.success) {
-                if (data.result.includes('연결이 현재 설정되지 않았습니다')) {
+                if (data.result.includes('Connection not currently configured')) {
                      contentDiv.innerHTML = `<div class="info-text"><i class="fa-solid fa-circle-info"></i> ${data.result}</div>`;
                 } else {
                     // Store raw markdown
@@ -278,7 +310,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+        const jsPDFClass = window.jspdf?.jsPDF || window.jsPDF || jsPDF;
+        const doc = new jsPDFClass({ unit: 'pt', format: 'a4' });
         const pageWidth = doc.internal.pageSize.getWidth();
         const margin = 40;
         const maxWidth = pageWidth - margin * 2;
@@ -290,6 +323,8 @@ document.addEventListener('DOMContentLoaded', () => {
         doc.save(`Paper_Outline_${new Date().getTime()}.pdf`);
 
         downloadPdfBtn.innerHTML = originalText;
+        resetForm();
+        showStep('step-1');
     });
 
 });
