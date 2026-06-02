@@ -41,24 +41,24 @@ body {
 }
 
 .app-container {
-    height: 100vh;
+    min-height: 100vh;
     padding: 1rem;
-    overflow: hidden;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
 }
 
-/* ============================ */
-/* VIEW STEPS (Wizard Layout)   */
-/* ============================ */
 .view-step {
     display: none;
     flex: 1;
     gap: 1.5rem;
     animation: fadeIn 0.3s ease;
-    overflow: hidden;
+    overflow-y: auto;
 }
 
+/* ============================ */
+/* VIEW STEPS (Wizard Layout)   */
+/* ============================ */
 .view-step.active {
     display: flex;
 }
@@ -213,6 +213,7 @@ select:focus, input[type="text"]:focus {
     flex-direction: column;
     gap: 1.5rem;
     height: 100%;
+    overflow-y: auto;
 }
 
 .input-section {
@@ -220,7 +221,6 @@ select:focus, input[type="text"]:focus {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    height: 100%;
 }
 
 .header-content h1 {
