@@ -25,31 +25,9 @@
                     <h2>OutlineGen</h2>
                 </div>
 
-                <div class="settings-group">
-                    <label for="languageSelect"><i class="fa-solid fa-globe"></i> Output Language</label>
-                    <div class="custom-select">
-                        <select id="languageSelect">
-                            <option value="en-US">English (US)</option>
-                            <option value="ko-KR">Korean (한국어)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="settings-group">
-                    <label for="categoryInput"><i class="fa-solid fa-tags"></i> Category</label>
-                    <input type="text" id="categoryInput" class="custom-input" placeholder="e.g. Computer Science, Biology">
-                </div>
-
-                <div class="settings-group">
-                    <label for="formatSelect"><i class="fa-solid fa-file-contract"></i> Standard Format</label>
-                    <div class="custom-select">
-                        <select id="formatSelect">
-                            <option value="IEEE">IEEE Standard</option>
-                            <option value="Nature">Nature Portfolio</option>
-                            <option value="ACM">ACM Transactions</option>
-                            <option value="ArXiv">ArXiv Preprint</option>
-                        </select>
-                    </div>
+                <div class="sidebar-copy">
+                    <h3>Step-by-step outline builder</h3>
+                    <p>Fill the form in order to generate a cleaner paper outline. Start with options, then describe the content, and finally attach reference images.</p>
                 </div>
 
                 <div class="sidebar-footer">
@@ -67,17 +45,68 @@
                         <p>Enter your keywords, research data, or upload an image to start generating a structured outline.</p>
                     </div>
 
-                    <div class="input-area">
-                        <textarea id="userInput" placeholder="Type your keywords, hypothesis, or data here... (e.g. 'A new machine learning algorithm for predicting stock prices...')" rows="8"></textarea>
-                        
-                        <div class="upload-area" id="dropZone">
-                            <input type="file" id="imageUpload" accept="image/*" hidden>
-                            <div class="upload-content">
-                                <i class="fa-solid fa-cloud-arrow-up"></i>
-                                <span>Drag & drop a graph/image or <strong>browse</strong></span>
+                    <div class="form-cards">
+                        <div class="form-card">
+                            <div class="card-step">
+                                <span>1</span>
+                                <div>
+                                    <h3>Choose output options</h3>
+                                    <p>Select a language and paper standard before writing the prompt.</p>
+                                </div>
                             </div>
-                            <img id="imagePreview" src="" alt="Preview" style="display: none;">
-                            <button class="remove-image-btn" id="removeImageBtn" style="display: none;"><i class="fa-solid fa-times"></i></button>
+
+                            <div class="form-row">
+                                <label for="languageSelect">Output Language</label>
+                                <div class="custom-select">
+                                    <select id="languageSelect">
+                                        <option value="en-US">English (US)</option>
+                                        <option value="ko-KR">Korean (한국어)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <label for="formatSelect">Standard Format</label>
+                                <div class="custom-select">
+                                    <select id="formatSelect">
+                                        <option value="IEEE">IEEE Standard</option>
+                                        <option value="Nature">Nature Portfolio</option>
+                                        <option value="ACM">ACM Transactions</option>
+                                        <option value="ArXiv">ArXiv Preprint</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-card">
+                            <div class="card-step">
+                                <span>2</span>
+                                <div>
+                                    <h3>Describe your paper</h3>
+                                    <p>Write the core idea, keywords, research goal, or data summary.</p>
+                                </div>
+                            </div>
+                            <textarea id="userInput" placeholder="Type your keywords, hypothesis, or data here... (e.g. 'A new machine learning algorithm for predicting stock prices...')" rows="8"></textarea>
+                        </div>
+
+                        <div class="form-card">
+                            <div class="card-step">
+                                <span>3</span>
+                                <div>
+                                    <h3>Attach reference images</h3>
+                                    <p>Upload supporting charts, diagrams, or figures to enrich the outline.</p>
+                                </div>
+                            </div>
+
+                            <div class="upload-area" id="dropZone">
+                                <input type="file" id="imageUpload" accept="image/*" hidden multiple>
+                                <div class="upload-content">
+                                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                                    <span>Drag & drop graphs/images or <strong>browse</strong></span>
+                                </div>
+                                <div class="upload-info" id="uploadInfo">최대 10개 이미지, 개별 파일 최대 5MB.</div>
+                                <div class="preview-list" id="imagePreviewList"></div>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -144,7 +173,7 @@
                     <div class="card-header">
                         <div class="ai-info">
                             <i class="fa-solid fa-robot text-claude"></i>
-                            <h3>Claude 3.5 Sonnet</h3>
+                            <h3>Claude 3.5 Mini</h3>
                         </div>
                     </div>
                     <div class="card-body">

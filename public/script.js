@@ -3,13 +3,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Elements: Inputs ---
     const dropZone = document.getElementById('dropZone');
     const imageUpload = document.getElementById('imageUpload');
-    const imagePreview = document.getElementById('imagePreview');
     const uploadContent = document.querySelector('.upload-content');
-    const removeImageBtn = document.getElementById('removeImageBtn');
     
     const generateBtn = document.getElementById('generateBtn');
     const userInput = document.getElementById('userInput');
-    const categoryInput = document.getElementById('categoryInput');
     const formatSelect = document.getElementById('formatSelect');
     const languageSelect = document.getElementById('languageSelect');
 
@@ -24,13 +21,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadPdfBtn = document.getElementById('downloadPdfBtn');
 
     // --- State & Cache ---
-    let base64Image = null;
     let lastPayloadStr = null; // Used for Token Caching
     let generatedData = {}; // Stores raw markdown output from each API
 
     // --- Image Upload Logic ---
+    const imagePreviewList = document.getElementById('imagePreviewList');
+    const uploadInfo = document.getElementById('uploadInfo');
+    const MAX_FILES = 10;
+    const MAX_FILE_SIZE_MB = 5;
+    const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+    let imageFiles = [];
+
     dropZone.addEventListener('click', () => {
-        if (!base64Image) imageUpload.click();
+        imageUpload.click();
     });
 
     dropZone.addEventListener('dragover', (e) => {
@@ -45,44 +48,93 @@ document.addEventListener('DOMContentLoaded', () => {
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
         dropZone.style.borderColor = 'var(--panel-border)';
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            handleFile(e.dataTransfer.files[0]);
+        if (e.dataTransfer.files && e.dataTransfer.files.length) {
+            handleFiles(Array.from(e.dataTransfer.files));
         }
     });
 
     imageUpload.addEventListener('change', function() {
-        if (this.files && this.files[0]) {
-            handleFile(this.files[0]);
+        if (this.files && this.files.length) {
+            handleFiles(Array.from(this.files));
         }
     });
 
-    removeImageBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        base64Image = null;
-        imagePreview.src = '';
-        imagePreview.style.display = 'none';
-        removeImageBtn.style.display = 'none';
-        uploadContent.style.display = 'flex';
-        imageUpload.value = '';
-    });
-
-    function handleFile(file) {
-        if (!file.type.startsWith('image/')) {
-            alert('Please upload an image file.');
+    function handleFiles(files) {
+        const selectedImages = files.filter(file => file.type.startsWith('image/'));
+        if (!selectedImages.length) {
+            alert('이미지 파일만 업로드할 수 있습니다.');
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const fullBase64 = e.target.result;
-            base64Image = fullBase64.split(',')[1]; 
-            
-            imagePreview.src = fullBase64;
-            imagePreview.style.display = 'block';
-            uploadContent.style.display = 'none';
-            removeImageBtn.style.display = 'block';
+        if (imageFiles.length + selectedImages.length > MAX_FILES) {
+            alert(`최대 ${MAX_FILES}개의 이미지만 업로드할 수 있습니다.`);
+            return;
         }
-        reader.readAsDataURL(file);
+
+        const oversized = selectedImages.filter(file => file.size > MAX_FILE_SIZE_BYTES);
+        if (oversized.length) {
+            alert(`각 파일의 최대 용량은 ${MAX_FILE_SIZE_MB}MB입니다.`);
+            return;
+        }
+
+        const readPromises = selectedImages.map(file => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const fullBase64 = e.target.result;
+                resolve({
+                    name: file.name,
+                    size: file.size,
+                    previewUrl: fullBase64,
+                    base64: fullBase64.split(',')[1]
+                });
+            };
+            reader.onerror = () => reject(new Error('파일을 읽는 중 오류가 발생했습니다.'));
+            reader.readAsDataURL(file);
+        }));
+
+        Promise.all(readPromises)
+            .then(results => {
+                imageFiles = imageFiles.concat(results);
+                renderPreviews();
+                imageUpload.value = '';
+            })
+            .catch(error => {
+                console.error(error);
+                alert('이미지 업로드 중 오류가 발생했습니다.');
+            });
+    }
+
+    function renderPreviews() {
+        imagePreviewList.innerHTML = '';
+        if (!imageFiles.length) {
+            uploadContent.style.display = 'flex';
+            uploadInfo.textContent = `최대 ${MAX_FILES}개 이미지, 개별 파일 최대 ${MAX_FILE_SIZE_MB}MB.`;
+            return;
+        }
+
+        uploadContent.style.display = 'none';
+        uploadInfo.textContent = `${imageFiles.length}/${MAX_FILES}개 업로드됨 · 각 파일 최대 ${MAX_FILE_SIZE_MB}MB`;
+
+        imageFiles.forEach((item, index) => {
+            const thumb = document.createElement('div');
+            thumb.className = 'preview-thumb';
+            thumb.innerHTML = `
+                <img src="${item.previewUrl}" alt="${item.name}">
+                <div class="preview-meta">
+                    <span>${item.name}</span>
+                    <button type="button" class="preview-remove-btn" data-index="${index}" aria-label="Remove image">×</button>
+                </div>
+            `;
+            imagePreviewList.appendChild(thumb);
+        });
+
+        imagePreviewList.querySelectorAll('.preview-remove-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const idx = Number(e.currentTarget.dataset.index);
+                imageFiles.splice(idx, 1);
+                renderPreviews();
+            });
+        });
     }
 
     // --- Navigation Functions ---
@@ -103,21 +155,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Generation Logic (Step 1 -> Step 2) ---
     generateBtn.addEventListener('click', async () => {
         const text = userInput.value.trim();
-        const category = categoryInput.value.trim() || 'General';
         const format = formatSelect.value;
         const language = languageSelect.value;
 
-        if (!text && !base64Image) {
+        if (!text && !imageFiles.length) {
             alert('Please provide keywords or an image.');
             return;
         }
 
         const currentPayload = {
             userInput: text,
-            category: category,
             format: format,
             language: language,
-            imageAnalysis: base64Image
+            imageData: imageFiles.length ? imageFiles.map(item => item.base64) : null
         };
 
         const currentPayloadStr = JSON.stringify(currentPayload);
@@ -132,6 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- NEW GENERATION ---
         lastPayloadStr = currentPayloadStr;
         generatedData = {}; // Clear old data
+        documentPreview.innerHTML = '';
         
         // Go to Step 2
         showStep('step-2');
@@ -217,21 +268,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- PDF Export Logic (Step 3) ---
     downloadPdfBtn.addEventListener('click', () => {
-        // Change button text temporarily
         const originalText = downloadPdfBtn.innerHTML;
         downloadPdfBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating PDF...';
-        
-        const opt = {
-            margin:       0.5,
-            filename:     `Paper_Outline_${new Date().getTime()}.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true },
-            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-        };
 
-        html2pdf().set(opt).from(documentPreview).save().then(() => {
+        const textContent = documentPreview.innerText.trim();
+        if (!textContent) {
+            alert('No content to export. Please select an outline first.');
             downloadPdfBtn.innerHTML = originalText;
-        });
+            return;
+        }
+
+        const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const margin = 40;
+        const maxWidth = pageWidth - margin * 2;
+
+        doc.setFont('Helvetica');
+        doc.setFontSize(11);
+        const splitText = doc.splitTextToSize(textContent, maxWidth);
+        doc.text(splitText, margin, margin);
+        doc.save(`Paper_Outline_${new Date().getTime()}.pdf`);
+
+        downloadPdfBtn.innerHTML = originalText;
     });
 
 });
