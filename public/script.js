@@ -20,10 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectBtns = document.querySelectorAll('.select-btn');
     const documentPreview = document.getElementById('documentPreview');
     const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+    downloadPdfBtn.disabled = true;
 
     // --- State & Cache ---
     let lastPayloadStr = null; // Used for Token Caching
     let generatedData = {}; // Stores raw markdown output from each API
+    let selectedMarkdown = '';
 
     // --- Image Upload Logic ---
     const imagePreviewList = document.getElementById('imagePreviewList');
@@ -153,6 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPreviews();
         lastPayloadStr = null;
         generatedData = {};
+        selectedMarkdown = '';
         documentPreview.innerHTML = '';
 
         document.querySelectorAll('.select-btn').forEach(btn => btn.disabled = true);
@@ -291,6 +294,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const markdownText = generatedData[targetId];
 
             if (markdownText) {
+                selectedMarkdown = markdownText;
+                downloadPdfBtn.disabled = false;
                 // Parse markdown and inject into Step 3 document preview
                 documentPreview.innerHTML = marked.parse(markdownText);
                 showStep('step-3');
@@ -298,33 +303,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // --- PDF Export Logic (Step 3) ---
+    // --- Markdown Export Logic (Step 3) ---
     downloadPdfBtn.addEventListener('click', () => {
-        const originalText = downloadPdfBtn.innerHTML;
-        downloadPdfBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating PDF...';
-
-        const textContent = documentPreview.innerText.trim();
-        if (!textContent) {
-            alert('No content to export. Please select an outline first.');
-            downloadPdfBtn.innerHTML = originalText;
+        if (!selectedMarkdown) {
+            alert('Please select an outline before downloading.');
             return;
         }
 
-        const jsPDFClass = window.jspdf?.jsPDF || window.jsPDF || jsPDF;
-        const doc = new jsPDFClass({ unit: 'pt', format: 'a4' });
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const margin = 40;
-        const maxWidth = pageWidth - margin * 2;
-
-        doc.setFont('Helvetica');
-        doc.setFontSize(11);
-        const splitText = doc.splitTextToSize(textContent, maxWidth);
-        doc.text(splitText, margin, margin);
-        doc.save(`Paper_Outline_${new Date().getTime()}.pdf`);
-
-        downloadPdfBtn.innerHTML = originalText;
-        resetForm();
-        showStep('step-1');
+        const blob = new Blob([selectedMarkdown], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Paper_Outline_${new Date().getTime()}.md`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     });
 
 });
