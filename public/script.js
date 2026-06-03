@@ -19,8 +19,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const backToStep2Btn = document.getElementById('backToStep2Btn');
     const selectBtns = document.querySelectorAll('.select-btn');
     const documentPreview = document.getElementById('documentPreview');
-    const downloadPdfBtn = document.getElementById('downloadPdfBtn');
-    downloadPdfBtn.disabled = true;
+    const downloadWordBtn = document.getElementById('downloadWordBtn');
+    const downloadLatexBtn = document.getElementById('downloadLatexBtn');
+    const newProjectBtn = document.getElementById('newProjectBtn');
+    downloadWordBtn.disabled = true;
+    downloadLatexBtn.disabled = true;
 
     // --- State & Cache ---
     let lastPayloadStr = null; // Used for Token Caching
@@ -159,6 +162,8 @@ document.addEventListener('DOMContentLoaded', () => {
         documentPreview.innerHTML = '';
 
         document.querySelectorAll('.select-btn').forEach(btn => btn.disabled = true);
+        downloadWordBtn.disabled = true;
+        downloadLatexBtn.disabled = true;
         document.querySelectorAll('.markdown-content').forEach(div => {
             div.innerHTML = '';
             div.style.display = 'none';
@@ -295,7 +300,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (markdownText) {
                 selectedMarkdown = markdownText;
-                downloadPdfBtn.disabled = false;
+                downloadWordBtn.disabled = false;
+                downloadLatexBtn.disabled = false;
                 // Parse markdown and inject into Step 3 document preview
                 documentPreview.innerHTML = marked.parse(markdownText);
                 showStep('step-3');
@@ -303,22 +309,85 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // --- Markdown Export Logic (Step 3) ---
-    downloadPdfBtn.addEventListener('click', () => {
+    function downloadFile(filename, content, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
+    function markdownToLatex(markdown) {
+        const lines = markdown.split('\n');
+        let latexLines = [
+            '\\documentclass{article}',
+            '\\usepackage[utf8]{inputenc}',
+            '\\usepackage{enumitem}',
+            '\\begin{document}'
+        ];
+        let inItemize = false;
+
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            if (/^#{3}\s+/.test(trimmed)) {
+                if (inItemize) { latexLines.push('\\end{itemize}'); inItemize = false; }
+                latexLines.push('\\subsubsection{' + trimmed.replace(/^#{3}\s+/, '') + '}');
+            } else if (/^#{2}\s+/.test(trimmed)) {
+                if (inItemize) { latexLines.push('\\end{itemize}'); inItemize = false; }
+                latexLines.push('\\subsection{' + trimmed.replace(/^#{2}\s+/, '') + '}');
+            } else if (/^#\s+/.test(trimmed)) {
+                if (inItemize) { latexLines.push('\\end{itemize}'); inItemize = false; }
+                latexLines.push('\\section{' + trimmed.replace(/^#\s+/, '') + '}');
+            } else if (/^[-*+]\s+/.test(trimmed)) {
+                if (!inItemize) { latexLines.push('\\begin{itemize}[leftmargin=*]'); inItemize = true; }
+                latexLines.push('\\item ' + trimmed.replace(/^[-*+]\s+/, ''));
+            } else if (trimmed === '') {
+                if (inItemize) { latexLines.push('\\end{itemize}'); inItemize = false; }
+                latexLines.push('');
+            } else {
+                if (inItemize) { latexLines.push('\\end{itemize}'); inItemize = false; }
+                let paragraph = trimmed
+                    .replace(/\*\*(.*?)\*\*/g, '\\textbf{$1}')
+                    .replace(/\*(.*?)\*/g, '\\emph{$1}');
+                latexLines.push(paragraph + '\\');
+            }
+        });
+
+        if (inItemize) {
+            latexLines.push('\\end{itemize}');
+        }
+        latexLines.push('\\end{document}');
+        return latexLines.join('\n');
+    }
+
+    downloadWordBtn.addEventListener('click', () => {
         if (!selectedMarkdown) {
             alert('Please select an outline before downloading.');
             return;
         }
 
-        const blob = new Blob([selectedMarkdown], { type: 'text/markdown;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `Paper_Outline_${new Date().getTime()}.md`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        const htmlContent = marked.parse(selectedMarkdown);
+        const wordHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${htmlContent}</body></html>`;
+        downloadFile(`Paper_Outline_${new Date().getTime()}.doc`, wordHtml, 'application/msword;charset=utf-8');
+    });
+
+    downloadLatexBtn.addEventListener('click', () => {
+        if (!selectedMarkdown) {
+            alert('Please select an outline before downloading.');
+            return;
+        }
+
+        const latexContent = markdownToLatex(selectedMarkdown);
+        downloadFile(`Paper_Outline_${new Date().getTime()}.tex`, latexContent, 'text/x-tex;charset=utf-8');
+    });
+
+    newProjectBtn.addEventListener('click', () => {
+        resetForm();
+        showStep('step-1');
     });
 
 });
