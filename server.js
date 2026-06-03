@@ -125,19 +125,21 @@ function buildPrompt(userInput, format, language, imageData) {
             instruction: "한국어로 작성하세요.",
             role: "당신은 문서 재배치기(Document Reorganizer)입니다.",
             task: "사용자가 제공한 문장만 사용하고, 새로운 정보, 숫자, 표, 참고문헌, 실험 결과, 성능 지표, 하드웨어 환경, 데이터셋 정보, 알고리즘 설명, 분석 결과를 추가하지 마십시오.",
-            structure: "선택된 포맷을 반영하여 문서 구조를 구성하십시오.",
+            structure: "선택된 포맷에 맞춰 논문 개요를 구성하십시오.",
+            outputFormat: "결과를 마크다운 형식으로 출력하고, 도입부만이 아니라 전체 섹션 구조를 포함하십시오.",
             imageInstruction: "이미지가 첨부된 경우, 이미지가 들어갈 위치를 명확하게 지정하는 자리 표시자를 포함하십시오. 실제 이미지 내용을 추측하지 말고 'Image 1 placeholder' 또는 'Figure 1 placeholder' 형태로 지정하십시오.",
             contentHeader: "사용자 입력:",
-            promptEnd: "위 내용을 바탕으로 문서 형식에 맞게 재배치하십시오. 정보가 부족하면 섹션 제목과 제공된 문장만 배치하고, 제공되지 않은 내용을 새로 작성하지 마십시오."
+            promptEnd: "위 내용을 바탕으로 문서 형식에 맞게 재배치하십시오. 정보가 부족하면 기본 섹션 제목을 포함한 개요를 생성하되, 제공되지 않은 내용을 새로 작성하지 마십시오."
         },
         "en-US": {
             instruction: "Write in English.",
             role: "You are a Document Reorganizer.",
             task: "Use only the sentences provided by the user, and do not add any new information, numbers, tables, references, experimental results, performance metrics, hardware environment, dataset details, algorithm descriptions, or analysis conclusions.",
             structure: "Organize the document according to the selected format.",
+            outputFormat: "Return the outline in markdown format with clear headings, and include the full paper structure rather than only an introduction.",
             imageInstruction: "If images are attached, include explicit placeholders indicating where each image should appear, such as 'Image 1 placeholder' or 'Figure 1 placeholder'. Do not invent image details beyond what is clearly provided.",
             contentHeader: "User input:",
-            promptEnd: "Reorganize the content into the document format. If information is insufficient, include only section headings and the provided sentences, and do not create new content for missing sections."
+            promptEnd: "Reorganize the content into the document format. If information is insufficient, include a complete outline skeleton with section headings and the provided sentences, without inventing missing content."
         }
     };
 
@@ -156,6 +158,7 @@ function buildPrompt(userInput, format, language, imageData) {
 ${langTemplate.task}
 ${langTemplate.structure}
 ${langTemplate.instruction}
+${langTemplate.outputFormat}
 
 Format guidance: ${formatInstruction}`;
 
@@ -234,24 +237,13 @@ app.post('/api/generate/gpt', async (req, res) => {
 
         const { systemPrompt, content } = buildPrompt(userInput, format, language, imageData);
 
-        const userContent = [{ type: 'input_text', text: content }];
-        if (imageData && Array.isArray(imageData)) {
-            imageData.forEach(base64 => {
-                userContent.push({
-                    type: 'input_image',
-                    image_url: {
-                        url: `data:image/png;base64,${base64}`
-                    }
-                });
-            });
-        }
-
+        // OpenAI chat completions expects plain text content for each message.
         const openaiModel = process.env.OPENAI_MODEL || 'gpt-4o';
         const response = await openai.chat.completions.create({
             model: openaiModel,
             messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userContent }
+                { role: "system", content: [{ type: 'text', text: systemPrompt }] },
+                { role: "user", content: [{ type: 'text', text: content }] }
             ]
         });
 
@@ -259,8 +251,8 @@ app.post('/api/generate/gpt', async (req, res) => {
 
         res.json({ success: true, result: resultText });
     } catch (error) {
-        console.error('[GPT Error]', error.message);
-        res.status(500).json({ success: false, error: "An error occurred while calling the GPT API.", detail: error.message });
+        console.error('[GPT Error]', error.response?.data || error.message);
+        res.status(500).json({ success: false, error: "An error occurred while calling the GPT API.", detail: error.response?.data?.error?.message || error.message });
     }
 });
 
