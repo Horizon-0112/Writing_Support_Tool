@@ -1,15 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
-    
+
     // --- Elements: Inputs ---
     const dropZone = document.getElementById('dropZone');
     const imageUpload = document.getElementById('imageUpload');
     const uploadContent = document.querySelector('.upload-content');
-    
+
     const generateBtn = document.getElementById('generateBtn');
     const userInput = document.getElementById('userInput');
     const charCount = document.getElementById('charCount');
     const formatSelect = document.getElementById('formatSelect');
-    const languageSelect = document.getElementById('languageSelect');
 
     // --- Elements: Navigation ---
     const step1 = document.getElementById('step-1');
@@ -27,8 +26,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- State & Cache ---
     let lastPayloadStr = null; // Used for Token Caching
-    let generatedData = {}; // Stores raw markdown output from each API
+    let generatedData = {}; // Stores raw text output from each API
     let selectedMarkdown = '';
+
+    // --- Academic Text Renderer ---
+    function renderAcademicText(text) {
+        const lines = text.split('\n');
+        let html = '';
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            if (!trimmed) {
+                html += '<br>';
+                return;
+            }
+            // Main section: I. INTRODUCTION, II. METHODS etc.
+            if (/^[IVXLC]+\.\s+[A-Z\uAC00-\uD7A3]/.test(trimmed)) {
+                html += `<h2 class="academic-section">${trimmed}</h2>`;
+            }
+            // Subsection: A. Title or A.1 Title
+            else if (/^[A-Z][\.\d]*\.\s+/.test(trimmed)) {
+                html += `<h3 class="academic-subsection">${trimmed}</h3>`;
+            }
+            // Numbered subsection like 1.1, 2.3 etc
+            else if (/^\d+\.\d+\s+/.test(trimmed)) {
+                html += `<h3 class="academic-subsection">${trimmed}</h3>`;
+            }
+            // Top-level bold (abstract, keywords line)
+            else if (/^(Abstract|Keywords|ABSTRACT|KEYWORDS)/i.test(trimmed)) {
+                html += `<h2 class="academic-section">${trimmed}</h2>`;
+            }
+            else {
+                html += `<p>${trimmed}</p>`;
+            }
+        });
+        return html;
+    }
 
     // --- Image Upload Logic ---
     const imagePreviewList = document.getElementById('imagePreviewList');
@@ -65,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    imageUpload.addEventListener('change', function() {
+    imageUpload.addEventListener('change', function () {
         if (this.files && this.files.length) {
             handleFiles(Array.from(this.files));
         }
@@ -91,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const readPromises = selectedImages.map(file => new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 const fullBase64 = e.target.result;
                 resolve({
                     name: file.name,
@@ -152,7 +184,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetForm() {
         userInput.value = '';
         formatSelect.value = 'IEEE';
-        languageSelect.value = 'en-US';
         imageFiles = [];
         imageUpload.value = '';
         renderPreviews();
@@ -191,7 +222,6 @@ document.addEventListener('DOMContentLoaded', () => {
     generateBtn.addEventListener('click', async () => {
         const text = userInput.value.trim();
         const format = formatSelect.value;
-        const language = languageSelect.value;
 
         if (!text && !imageFiles.length) {
             alert('Please provide keywords or an image.');
@@ -206,7 +236,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentPayload = {
             userInput: text,
             format: format,
-            language: language,
             imageData: imageFiles.length ? imageFiles.map(item => item.base64) : null
         };
 
@@ -216,14 +245,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // If the payload hasn't changed, skip API calls and just show Step 2
         if (lastPayloadStr === currentPayloadStr) {
             showStep('step-2');
-            return; 
+            return;
         }
 
         // --- NEW GENERATION ---
         lastPayloadStr = currentPayloadStr;
         generatedData = {}; // Clear old data
         documentPreview.innerHTML = '';
-        
+
         // Go to Step 2
         showStep('step-2');
 
@@ -231,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ['gemini', 'gpt', 'claude'].forEach(ai => {
             const cardBody = document.querySelector(`#card-${ai} .card-body`);
             const selectBtn = document.querySelector(`.select-btn[data-target="${ai}"]`);
-            
+
             selectBtn.disabled = true;
             cardBody.querySelector('.placeholder-text').style.display = 'none';
             cardBody.querySelector('.markdown-content').style.display = 'none';
@@ -259,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const data = await response.json();
-            
+
             const cardBody = document.querySelector(`#card-${id} .card-body`);
             cardBody.querySelector('.loading-spinner').style.display = 'none';
             const contentDiv = cardBody.querySelector('.markdown-content');
@@ -267,14 +296,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data.success) {
                 if (data.result.includes('Connection not currently configured')) {
-                     contentDiv.innerHTML = `<div class="info-text"><i class="fa-solid fa-circle-info"></i> ${data.result}</div>`;
+                    contentDiv.innerHTML = `<div class="info-text"><i class="fa-solid fa-circle-info"></i> ${data.result}</div>`;
                 } else {
-                    // Store raw markdown
+                    // Store raw text
                     generatedData[id] = data.result;
-                    
-                    // Render HTML for Step 2
-                    contentDiv.innerHTML = marked.parse(data.result);
-                    
+
+                    // Render HTML for Step 2 (academic paper style)
+                    contentDiv.innerHTML = renderAcademicText(data.result);
+
                     // Enable Select Button
                     document.querySelector(`.select-btn[data-target="${id}"]`).disabled = false;
                 }
@@ -302,8 +331,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 selectedMarkdown = markdownText;
                 downloadWordBtn.disabled = false;
                 downloadLatexBtn.disabled = false;
-                // Parse markdown and inject into Step 3 document preview
-                documentPreview.innerHTML = marked.parse(markdownText);
+                // Render academic text into Step 3 document preview
+                documentPreview.innerHTML = renderAcademicText(markdownText);
                 showStep('step-3');
             }
         });

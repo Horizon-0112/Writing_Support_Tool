@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,10 +11,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
     <div class="app-container">
-        
+
         <!-- ============================== -->
         <!-- STEP 1: INPUT VIEW             -->
         <!-- ============================== -->
@@ -27,7 +29,8 @@
 
                 <div class="sidebar-copy">
                     <h3>Step-by-step outline builder</h3>
-                    <p>Fill the form in order to generate a cleaner paper outline. Start with options, then describe the content, and finally attach reference images.</p>
+                    <p>Fill the form in order to generate a cleaner paper outline. Start with options, then describe the
+                        content, and finally attach reference images.</p>
                 </div>
 
                 <div class="sidebar-footer">
@@ -42,7 +45,8 @@
                 <section class="input-section glass-panel">
                     <div class="header-content">
                         <h1>Draft Your Paper Outline</h1>
-                        <p>Enter your keywords, research data, or upload an image to start generating a structured outline.</p>
+                        <p>Enter your keywords, research data, or upload an image to start generating a structured
+                            outline.</p>
                     </div>
 
                     <div class="form-cards">
@@ -52,16 +56,6 @@
                                 <div>
                                     <h3>Choose output options</h3>
                                     <p>Select a language and paper standard before writing the prompt.</p>
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <label for="languageSelect">Output Language</label>
-                                <div class="custom-select">
-                                    <select id="languageSelect">
-                                        <option value="en-US">English (US)</option>
-                                        <option value="ko-KR">Korean (한국어)</option>
-                                    </select>
                                 </div>
                             </div>
 
@@ -86,7 +80,9 @@
                                     <p>Write the core idea, keywords, research goal, or data summary.</p>
                                 </div>
                             </div>
-                            <textarea id="userInput" placeholder="Type your keywords, hypothesis, or data here... (e.g. 'A new machine learning algorithm for predicting stock prices...')" rows="8" maxlength="5000"></textarea>
+                            <textarea id="userInput"
+                                placeholder="Type your keywords, hypothesis, or data here... (e.g. 'A new machine learning algorithm for predicting stock prices...')"
+                                rows="8" maxlength="5000"></textarea>
                             <div class="char-count"><span id="charCount">0</span>/5000</div>
                         </div>
 
@@ -95,7 +91,8 @@
                                 <span>3</span>
                                 <div>
                                     <h3>Attach reference images (Optional)</h3>
-                                    <p>Upload charts, diagrams, screenshots, or figures that support your paper. These help AI understand context better.</p>
+                                    <p>Upload charts, diagrams, screenshots, or figures that support your paper. These
+                                        help AI understand context better.</p>
                                 </div>
                             </div>
 
@@ -106,7 +103,8 @@
                                     <span>Drag & drop images or <strong>browse</strong></span>
                                 </div>
                                 <div class="upload-info" id="uploadInfo">
-                                    <strong>Supported:</strong> Charts, graphs, diagrams, tables, flow diagrams, screenshots | <strong>Limits:</strong> Max 10 images, 5MB each
+                                    <strong>Supported:</strong> Charts, graphs, diagrams, tables, flow diagrams,
+                                    screenshots | <strong>Limits:</strong> Max 10 images, 5MB each
                                 </div>
                                 <div class="preview-list" id="imagePreviewList"></div>
                             </div>
@@ -122,13 +120,14 @@
         <!-- ============================== -->
         <div id="step-2" class="view-step">
             <header class="step-header glass-panel">
-                <button id="backToStep1Btn" class="secondary-btn"><i class="fa-solid fa-arrow-left"></i> Back to Edit</button>
+                <button id="backToStep1Btn" class="secondary-btn"><i class="fa-solid fa-arrow-left"></i> Back to
+                    Edit</button>
                 <h2>Compare AI Results</h2>
                 <div style="width: 120px;"></div> <!-- spacer -->
             </header>
 
             <div class="results-grid">
-                
+
                 <!-- Gemini Card -->
                 <div class="result-card glass-panel" id="card-gemini">
                     <div class="card-header">
@@ -146,7 +145,8 @@
                         <div class="markdown-content" id="content-gemini" style="display: none;"></div>
                     </div>
                     <div class="card-footer">
-                        <button class="select-btn" data-target="gemini" disabled><i class="fa-solid fa-check"></i> Select This Outline</button>
+                        <button class="select-btn" data-target="gemini" disabled><i class="fa-solid fa-check"></i>
+                            Select This Outline</button>
                     </div>
                 </div>
 
@@ -167,7 +167,8 @@
                         <div class="markdown-content" id="content-gpt" style="display: none;"></div>
                     </div>
                     <div class="card-footer">
-                        <button class="select-btn" data-target="gpt" disabled><i class="fa-solid fa-check"></i> Select This Outline</button>
+                        <button class="select-btn" data-target="gpt" disabled><i class="fa-solid fa-check"></i> Select
+                            This Outline</button>
                     </div>
                 </div>
 
@@ -188,7 +189,8 @@
                         <div class="markdown-content" id="content-claude" style="display: none;"></div>
                     </div>
                     <div class="card-footer">
-                        <button class="select-btn" data-target="claude" disabled><i class="fa-solid fa-check"></i> Select This Outline</button>
+                        <button class="select-btn" data-target="claude" disabled><i class="fa-solid fa-check"></i>
+                            Select This Outline</button>
                     </div>
                 </div>
 
@@ -201,12 +203,16 @@
         <!-- ============================== -->
         <div id="step-3" class="view-step">
             <header class="step-header glass-panel">
-                <button id="backToStep2Btn" class="secondary-btn"><i class="fa-solid fa-arrow-left"></i> Back to Selection</button>
+                <button id="backToStep2Btn" class="secondary-btn"><i class="fa-solid fa-arrow-left"></i> Back to
+                    Selection</button>
                 <h2>Final Preview</h2>
                 <div class="step-actions">
-                    <button id="downloadWordBtn" class="primary-btn-small"><i class="fa-solid fa-file-word"></i> Download Word</button>
-                    <button id="downloadLatexBtn" class="secondary-btn"><i class="fa-solid fa-file-code"></i> Download LaTeX</button>
-                    <button id="newProjectBtn" class="secondary-btn"><i class="fa-solid fa-plus"></i> New Project</button>
+                    <button id="downloadWordBtn" class="primary-btn-small"><i class="fa-solid fa-file-word"></i>
+                        Download Word</button>
+                    <button id="downloadLatexBtn" class="secondary-btn"><i class="fa-solid fa-file-code"></i> Download
+                        LaTeX</button>
+                    <button id="newProjectBtn" class="secondary-btn"><i class="fa-solid fa-plus"></i> New
+                        Project</button>
                 </div>
             </header>
 
@@ -227,4 +233,5 @@
     <!-- Main Script -->
     <script src="script.js"></script>
 </body>
+
 </html>

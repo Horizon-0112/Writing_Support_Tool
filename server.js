@@ -9,8 +9,8 @@ const { OpenAI } = require('openai');
 const app = express();
 const PORT = 3000;
 
-// [1] 미들웨어 및 기본 설정
-app.use(cors()); 
+// [1] Middleware and base configuration
+app.use(cors());
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
@@ -19,12 +19,12 @@ if (process.env.OPENAI_API_KEY) {
     openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
 
-// 필수 폴더 자동 생성
+// Auto-create required directories
 ['templates', 'learned_formats'].forEach(dir => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir);
 });
 
-// 논문 형식 소스 데이터
+// Paper format source data
 const FORMAT_SOURCES = {
     "IEEE": {
         name: "IEEE Standard",
@@ -57,10 +57,10 @@ async function scrapeUrl(url) {
             const parsed = new URL(cleanUrl);
             parsed.pathname = parsed.pathname.split('/').map(seg => {
                 try { return encodeURIComponent(decodeURIComponent(seg)); }
-                catch(e) { return encodeURIComponent(seg); }
+                catch (e) { return encodeURIComponent(seg); }
             }).join('/');
             safeUrl = parsed.toString();
-        } catch(e) { safeUrl = encodeURI(cleanUrl); }
+        } catch (e) { safeUrl = encodeURI(cleanUrl); }
 
         const { data: html } = await axios.get(safeUrl, {
             headers: { 'User-Agent': 'Mozilla/5.0' },
@@ -68,13 +68,13 @@ async function scrapeUrl(url) {
         });
         const $ = cheerio.load(html);
         return $('body').text().replace(/\s+/g, ' ').substring(0, 5000);
-    } catch(err) {
+    } catch (err) {
         return null;
     }
 }
 
 // ═══════════════════════════════════════════════════════════
-// API: 논문 형식 학습 로직 (기존 유지)
+// API: Learn paper format
 // ═══════════════════════════════════════════════════════════
 app.post('/api/learn-format', async (req, res) => {
     try {
@@ -106,11 +106,11 @@ app.post('/api/learn-format', async (req, res) => {
         const learnedFormat = JSON.parse(response.choices[0].message.content);
         fs.writeFileSync(`./learned_formats/${formatKey}.json`, JSON.stringify(learnedFormat, null, 2));
         res.json({ success: true, learnedFormat });
-    } catch(error) { res.status(500).json({ success: false, error: error.message }); }
+    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
 });
 
-// 공통 프롬프트 생성기
-function buildPrompt(userInput, format, language, imageData) {
+// Common prompt builder - always outputs in English regardless of user input language
+function buildPrompt(userInput, format, _language, imageData) {
     let formatInstruction = "";
     const formatPath = `./learned_formats/${format}.json`;
     if (fs.existsSync(formatPath)) {
@@ -120,63 +120,48 @@ function buildPrompt(userInput, format, language, imageData) {
         formatInstruction = `Follow ${FORMAT_SOURCES[format].name} format. ${FORMAT_SOURCES[format].fallbackGuide}`;
     }
 
-    const langTemplates = {
-        "ko-KR": {
-            instruction: "한국어로 작성하세요.",
-            role: "당신은 문서 재배치기(Document Reorganizer)입니다.",
-            task: "사용자가 제공한 문장만 사용하고, 새로운 정보, 숫자, 표, 참고문헌, 실험 결과, 성능 지표, 하드웨어 환경, 데이터셋 정보, 알고리즘 설명, 분석 결과를 추가하지 마십시오.",
-            structure: "선택된 포맷에 맞춰 논문 개요를 구성하십시오.",
-            outputFormat: "결과를 마크다운 형식으로 출력하고, 도입부만이 아니라 전체 섹션 구조를 포함하십시오.",
-            imageInstruction: "이미지가 첨부된 경우, 이미지가 들어갈 위치를 명확하게 지정하는 자리 표시자를 포함하십시오. 실제 이미지 내용을 추측하지 말고 'Image 1 placeholder' 또는 'Figure 1 placeholder' 형태로 지정하십시오.",
-            contentHeader: "사용자 입력:",
-            promptEnd: "위 내용을 바탕으로 문서 형식에 맞게 재배치하십시오. 정보가 부족하면 기본 섹션 제목을 포함한 개요를 생성하되, 제공되지 않은 내용을 새로 작성하지 마십시오."
-        },
-        "en-US": {
-            instruction: "Write in English.",
-            role: "You are a Document Reorganizer.",
-            task: "Use only the sentences provided by the user, and do not add any new information, numbers, tables, references, experimental results, performance metrics, hardware environment, dataset details, algorithm descriptions, or analysis conclusions.",
-            structure: "Organize the document according to the selected format.",
-            outputFormat: "Return the outline in markdown format with clear headings, and include the full paper structure rather than only an introduction.",
-            imageInstruction: "If images are attached, include explicit placeholders indicating where each image should appear, such as 'Image 1 placeholder' or 'Figure 1 placeholder'. Do not invent image details beyond what is clearly provided.",
-            contentHeader: "User input:",
-            promptEnd: "Reorganize the content into the document format. If information is insufficient, include a complete outline skeleton with section headings and the provided sentences, without inventing missing content."
-        }
+    const template = {
+        instruction: "Always write in English only, regardless of the language of the user input.",
+        role: "You are a Document Reorganizer.",
+        task: "Use only the sentences provided by the user, and do not add any new information, numbers, tables, references, experimental results, performance metrics, hardware environment, dataset details, algorithm descriptions, or analysis conclusions.",
+        structure: "Organize the document according to the selected format.",
+        outputFormat: "Return the output as plain academic paper text. Do NOT use markdown symbols such as #, **, -, or *. Write section headings in the academic style like 'I. INTRODUCTION', 'II. METHODS' (numbered, uppercase) and subsections as 'A. Subsection Title'. Include the full paper structure with all sections, not just the introduction.",
+        imageInstruction: "If images are attached, include explicit placeholders indicating where each image should appear, such as 'Image 1 placeholder' or 'Figure 1 placeholder'. Do not invent image details beyond what is clearly provided.",
+        contentHeader: "User input:",
+        promptEnd: "Reorganize the content into the document format. If information is insufficient, include a complete outline skeleton with section headings and the provided sentences, without inventing missing content."
     };
 
-    const langTemplate = langTemplates[language] || langTemplates["en-US"];
     const trimmedInput = userInput ? String(userInput).trim() : "";
     let imageContext = "";
     if (imageData && imageData.length) {
-        imageContext = `\n\n[Images attached]: ${imageData.length} images are included. ${langTemplate.imageInstruction}`;
+        imageContext = `\n\n[Images attached]: ${imageData.length} images are included. ${template.imageInstruction}`;
     }
 
-    const fallbackContent = language === 'ko-KR'
-        ? '사용자가 세부 내용을 제공하지 않았습니다. 선택된 형식에 맞는 기본 논문 개요 골격을 생성하십시오. 도입, 방법, 결과, 결론 등 기본 섹션 제목을 포함하고 구체적 연구 결과는 추가하지 마십시오.'
-        : 'The user has not provided any specific details. Generate a basic paper outline skeleton for the selected format. Include standard section headings like Introduction, Methods, Results, and Conclusion, without inventing specific results.';
+    const fallbackContent = 'The user has not provided any specific details. Generate a basic paper outline skeleton for the selected format. Include standard section headings like Introduction, Methods, Results, and Conclusion, without inventing specific results.';
 
-    const systemPrompt = `${langTemplate.role}
-${langTemplate.task}
-${langTemplate.structure}
-${langTemplate.instruction}
-${langTemplate.outputFormat}
+    const systemPrompt = `${template.role}
+${template.task}
+${template.structure}
+${template.instruction}
+${template.outputFormat}
 
 Format guidance: ${formatInstruction}`;
 
     return {
         systemPrompt,
-        content: `${langTemplate.contentHeader}
+        content: `${template.contentHeader}
 ${trimmedInput || fallbackContent}${imageContext}
 
-${langTemplate.promptEnd}`
+${template.promptEnd}`
     };
 }
 
 // ═══════════════════════════════════════════════════════════
-// API: 논문 생성 - Gemini
+// API: Generate paper outline - Gemini
 // ═══════════════════════════════════════════════════════════
 app.post('/api/generate/gemini', async (req, res) => {
     try {
-        const { userInput, format, language, imageData } = req.body;
+        const { userInput, format, imageData } = req.body;
         if ((!userInput || !String(userInput).trim()) && (!imageData || !imageData.length)) {
             return res.status(400).json({ error: "Text input or image required." });
         }
@@ -185,7 +170,7 @@ app.post('/api/generate/gemini', async (req, res) => {
             return res.json({ success: false, error: "Gemini API key is not configured.", result: "API Key Not Provided" });
         }
 
-        const { systemPrompt, content } = buildPrompt(userInput, format, language, imageData);
+        const { systemPrompt, content } = buildPrompt(userInput, format, null, imageData);
 
         const parts = [{ text: `${systemPrompt}\n\n${content}` }];
         if (imageData && Array.isArray(imageData)) {
@@ -218,23 +203,23 @@ app.post('/api/generate/gemini', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// API: 논문 생성 - GPT
+// API: Generate paper outline - GPT
 // ═══════════════════════════════════════════════════════════
 app.post('/api/generate/gpt', async (req, res) => {
     try {
-        const { userInput, format, language, imageData } = req.body;
+        const { userInput, format, imageData } = req.body;
         if ((!userInput || !String(userInput).trim()) && (!imageData || !imageData.length)) {
             return res.status(400).json({ error: "Text input or image required." });
         }
 
         if (!process.env.OPENAI_API_KEY) {
-            return res.json({ 
-                success: false, 
-                result: "OpenAI (GPT) connection is not configured. Integration pending. (Currently Gemini only)" 
+            return res.json({
+                success: false,
+                result: "OpenAI (GPT) connection is not configured. Integration pending. (Currently Gemini only)"
             });
         }
 
-        const { systemPrompt, content } = buildPrompt(userInput, format, language, imageData);
+        const { systemPrompt, content } = buildPrompt(userInput, format, null, imageData);
 
         // OpenAI chat completions with image support
         const openaiModel = process.env.OPENAI_MODEL || 'gpt-4o';
@@ -266,23 +251,23 @@ app.post('/api/generate/gpt', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// API: 논문 생성 - Claude
+// API: Generate paper outline - Claude
 // ═══════════════════════════════════════════════════════════
 app.post('/api/generate/claude', async (req, res) => {
     try {
-        const { userInput, format, language, imageData } = req.body;
+        const { userInput, format, imageData } = req.body;
         if ((!userInput || !String(userInput).trim()) && (!imageData || !imageData.length)) {
             return res.status(400).json({ error: "Text input or image required." });
         }
 
         if (!process.env.ANTHROPIC_API_KEY) {
-            return res.json({ 
-                success: false, 
-                result: "Claude connection is not configured. Integration pending. (Currently Gemini only)" 
+            return res.json({
+                success: false,
+                result: "Claude connection is not configured. Integration pending. (Currently Gemini only)"
             });
         }
 
-        const { systemPrompt, content } = buildPrompt(userInput, format, language, imageData);
+        const { systemPrompt, content } = buildPrompt(userInput, format, null, imageData);
 
         const userMessageContent = [{ type: 'text', text: content }];
         if (imageData && Array.isArray(imageData)) {
