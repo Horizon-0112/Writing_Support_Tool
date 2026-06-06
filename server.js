@@ -122,19 +122,24 @@ function buildPrompt(userInput, format, _language, imageData) {
 
     const template = {
         instruction: "Always write in English only, regardless of the language of the user input.",
-        role: "You are a Document Reorganizer.",
-        task: "Use only the sentences provided by the user, and do not add any new information, numbers, tables, references, experimental results, performance metrics, hardware environment, dataset details, algorithm descriptions, or analysis conclusions.",
+        role: "You are a Document Reorganizer and academic writing assistant.",
+        task: "Use only the content provided by the user (text and images). Do not invent new data, numbers, experimental results, or conclusions that are not present in the provided content.",
         structure: "Organize the document according to the selected format.",
         outputFormat: "Return the output as plain academic paper text. Do NOT use markdown symbols such as #, **, -, or *. Write section headings in the academic style like 'I. INTRODUCTION', 'II. METHODS' (numbered, uppercase) and subsections as 'A. Subsection Title'. Include the full paper structure with all sections, not just the introduction.",
-        imageInstruction: "If images are attached, include explicit placeholders indicating where each image should appear, such as 'Image 1 placeholder' or 'Figure 1 placeholder'. Do not invent image details beyond what is clearly provided.",
         contentHeader: "User input:",
         promptEnd: "Reorganize the content into the document format. If information is insufficient, include a complete outline skeleton with section headings and the provided sentences, without inventing missing content."
     };
 
     const trimmedInput = userInput ? String(userInput).trim() : "";
+
+    // Build image context with analysis instructions per image
     let imageContext = "";
     if (imageData && imageData.length) {
-        imageContext = `\n\n[Images attached]: ${imageData.length} images are included. ${template.imageInstruction}`;
+        const imageList = imageData.map((img, i) => {
+            const label = img.name ? `Figure ${i + 1} (${img.name})` : `Figure ${i + 1}`;
+            return `- ${label}: Examine this image carefully. Identify what type of figure it is (e.g., graph, chart, diagram, table, screenshot, flowchart, microscopy image, etc.), describe its main visual content and any visible labels or data, and determine the most appropriate section of the paper where it should be referenced.`;
+        }).join('\n');
+        imageContext = `\n\nAttached figures (${imageData.length} total). For each image provided:\n${imageList}\n\nIn your output, reference each figure inline at the most appropriate location using the notation [Figure N] and provide a brief one-sentence caption describing what the figure shows based on your visual analysis.`;
     }
 
     const fallbackContent = 'The user has not provided any specific details. Generate a basic paper outline skeleton for the selected format. Include standard section headings like Introduction, Methods, Results, and Conclusion, without inventing specific results.';
@@ -174,12 +179,12 @@ app.post('/api/generate/gemini', async (req, res) => {
 
         const parts = [{ text: `${systemPrompt}\n\n${content}` }];
         if (imageData && Array.isArray(imageData)) {
-            imageData.forEach(base64 => {
+            imageData.forEach(img => {
+                // Support both legacy string format and new object format
+                const base64 = typeof img === 'string' ? img : img.base64;
+                const mimeType = (typeof img === 'object' && img.mimeType) ? img.mimeType : 'image/jpeg';
                 parts.push({
-                    inlineData: {
-                        mimeType: "image/png",
-                        data: base64
-                    }
+                    inlineData: { mimeType, data: base64 }
                 });
             });
         }
@@ -187,14 +192,11 @@ app.post('/api/generate/gemini', async (req, res) => {
         const geminiModel = process.env.GEMINI_MODEL || 'gemini-flash-latest';
         const response = await axios.post(
             `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${process.env.GEMINI_API_KEY}`,
-            {
-                contents: [{ parts }]
-            },
+            { contents: [{ parts }] },
             { headers: { 'Content-Type': 'application/json' } }
         );
 
         const resultText = response.data.candidates[0].content.parts[0].text;
-
         res.json({ success: true, result: resultText });
     } catch (error) {
         console.error('[Gemini Error]', error.response?.data || error.message);
@@ -225,10 +227,12 @@ app.post('/api/generate/gpt', async (req, res) => {
         const openaiModel = process.env.OPENAI_MODEL || 'gpt-4o';
         const userContent = [{ type: 'text', text: content }];
         if (imageData && Array.isArray(imageData)) {
-            imageData.forEach(base64 => {
+            imageData.forEach(img => {
+                const base64 = typeof img === 'string' ? img : img.base64;
+                const mimeType = (typeof img === 'object' && img.mimeType) ? img.mimeType : 'image/jpeg';
                 userContent.push({
                     type: 'image_url',
-                    image_url: { url: `data:image/png;base64,${base64}` }
+                    image_url: { url: `data:${mimeType};base64,${base64}` }
                 });
             });
         }
@@ -242,7 +246,6 @@ app.post('/api/generate/gpt', async (req, res) => {
         });
 
         const resultText = response.choices[0].message.content;
-
         res.json({ success: true, result: resultText });
     } catch (error) {
         console.error('[GPT Error]', error.response?.data || error.message);
@@ -271,29 +274,25 @@ app.post('/api/generate/claude', async (req, res) => {
 
         const userMessageContent = [{ type: 'text', text: content }];
         if (imageData && Array.isArray(imageData)) {
-            imageData.forEach(base64 => {
+            imageData.forEach(img => {
+                const base64 = typeof img === 'string' ? img : img.base64;
+                const mimeType = (typeof img === 'object' && img.mimeType) ? img.mimeType : 'image/jpeg';
+                // Claude only supports: image/jpeg, image/png, image/gif, image/webp
+                const supportedMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mimeType)
+                    ? mimeType
+                    : 'image/jpeg';
                 userMessageContent.push({
                     type: 'image',
-                    source: {
-                        type: 'base64',
-                        media_type: 'image/png',
-                        data: base64
-                    }
+                    source: { type: 'base64', media_type: supportedMime, data: base64 }
                 });
             });
         }
 
         const messages = [{ role: "user", content: userMessageContent }];
-
-        const claudeModel = process.env.CLAUDE_MODEL || 'claude-3.5-mini';
+        const claudeModel = process.env.CLAUDE_MODEL || 'claude-3.5-sonnet-20241022';
         const response = await axios.post(
             'https://api.anthropic.com/v1/messages',
-            {
-                model: claudeModel,
-                max_tokens: 4096,
-                system: systemPrompt,
-                messages
-            },
+            { model: claudeModel, max_tokens: 4096, system: systemPrompt, messages },
             {
                 headers: {
                     'x-api-key': process.env.ANTHROPIC_API_KEY,
@@ -304,7 +303,6 @@ app.post('/api/generate/claude', async (req, res) => {
         );
 
         const resultText = response.data.content[0].text;
-
         res.json({ success: true, result: resultText });
     } catch (error) {
         console.error('[Claude Error]', error.response?.data || error.message);

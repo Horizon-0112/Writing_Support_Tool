@@ -128,6 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 resolve({
                     name: file.name,
                     size: file.size,
+                    mimeType: file.type || 'image/jpeg',
                     previewUrl: fullBase64,
                     base64: fullBase64.split(',')[1]
                 });
@@ -236,7 +237,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentPayload = {
             userInput: text,
             format: format,
-            imageData: imageFiles.length ? imageFiles.map(item => item.base64) : null
+            imageData: imageFiles.length
+                ? imageFiles.map(item => ({ base64: item.base64, mimeType: item.mimeType, name: item.name }))
+                : null
         };
 
         const currentPayloadStr = JSON.stringify(currentPayload);
@@ -399,8 +402,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const htmlContent = marked.parse(selectedMarkdown);
-        const wordHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${htmlContent}</body></html>`;
+        // Convert plain academic text to simple HTML for Word export
+        const lines = selectedMarkdown.split('\n').map(line => {
+            const t = line.trim();
+            if (!t) return '<br>';
+            if (/^[IVXLC]+\.\s+/.test(t)) return `<h2>${t}</h2>`;
+            if (/^[A-Z][.\d]*\.\s+/.test(t)) return `<h3>${t}</h3>`;
+            if (/^(Abstract|Keywords|ABSTRACT|KEYWORDS)/i.test(t)) return `<h2>${t}</h2>`;
+            return `<p>${t}</p>`;
+        }).join('');
+        const wordHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${lines}</body></html>`;
         downloadFile(`Paper_Outline_${new Date().getTime()}.doc`, wordHtml, 'application/msword;charset=utf-8');
     });
 
