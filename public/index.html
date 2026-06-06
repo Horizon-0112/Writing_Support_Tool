@@ -94,8 +94,8 @@
                             <div class="card-step">
                                 <span>3</span>
                                 <div>
-                                    <h3>Attach reference images</h3>
-                                    <p>Upload supporting charts, diagrams, or figures to enrich the outline.</p>
+                                    <h3>Attach reference images (Optional)</h3>
+                                    <p>Upload charts, diagrams, screenshots, or figures that support your paper. These help AI understand context better.</p>
                                 </div>
                             </div>
 
@@ -103,9 +103,11 @@
                                 <input type="file" id="imageUpload" accept="image/*" hidden multiple>
                                 <div class="upload-content">
                                     <i class="fa-solid fa-cloud-arrow-up"></i>
-                                    <span>Drag & drop graphs/images or <strong>browse</strong></span>
+                                    <span>Drag & drop images or <strong>browse</strong></span>
                                 </div>
-                                <div class="upload-info" id="uploadInfo">Maximum 10 images, 5MB per file.</div>
+                                <div class="upload-info" id="uploadInfo">
+                                    <strong>Supported:</strong> Charts, graphs, diagrams, tables, flow diagrams, screenshots | <strong>Limits:</strong> Max 10 images, 5MB each
+                                </div>
                                 <div class="preview-list" id="imagePreviewList"></div>
                             </div>
                         </div>

@@ -511,13 +511,16 @@ textarea:focus {
 
 .document-paper {
     width: 100%;
-    max-width: 800px;
-    min-height: 1056px; /* A4 Ratio */
+    max-width: 210mm;
+    aspect-ratio: 210/297; /* A4 ratio */
     background: #ffffff;
     color: #111827; /* Dark text for paper */
-    padding: 4rem 3rem;
+    padding: 2rem 2.5rem;
     box-shadow: 0 20px 40px rgba(0,0,0,0.3);
     border-radius: 4px;
+    overflow: hidden;
+    font-size: 14px;
+    line-height: 1.5;
 }
 
 /* OVERRIDING MARKDOWN CONTENT FOR PREVIEW (White bg, black text) */

@@ -191,10 +191,9 @@ app.post('/api/generate/gemini', async (req, res) => {
         if (imageData && Array.isArray(imageData)) {
             imageData.forEach(base64 => {
                 parts.push({
-                    image: {
-                        image_url: {
-                            url: `data:image/png;base64,${base64}`
-                        }
+                    inlineData: {
+                        mimeType: "image/png",
+                        data: base64
                     }
                 });
             });
@@ -237,13 +236,23 @@ app.post('/api/generate/gpt', async (req, res) => {
 
         const { systemPrompt, content } = buildPrompt(userInput, format, language, imageData);
 
-        // OpenAI chat completions expects plain text content for each message.
+        // OpenAI chat completions with image support
         const openaiModel = process.env.OPENAI_MODEL || 'gpt-4o';
+        const userContent = [{ type: 'text', text: content }];
+        if (imageData && Array.isArray(imageData)) {
+            imageData.forEach(base64 => {
+                userContent.push({
+                    type: 'image_url',
+                    image_url: { url: `data:image/png;base64,${base64}` }
+                });
+            });
+        }
+
         const response = await openai.chat.completions.create({
             model: openaiModel,
             messages: [
                 { role: "system", content: [{ type: 'text', text: systemPrompt }] },
-                { role: "user", content: [{ type: 'text', text: content }] }
+                { role: "user", content: userContent }
             ]
         });
 
@@ -275,15 +284,21 @@ app.post('/api/generate/claude', async (req, res) => {
 
         const { systemPrompt, content } = buildPrompt(userInput, format, language, imageData);
 
-        const messages = [{ role: "user", content }];
+        const userMessageContent = [{ type: 'text', text: content }];
         if (imageData && Array.isArray(imageData)) {
             imageData.forEach(base64 => {
-                messages.push({
-                    role: "user",
-                    content: [{ type: 'image_url', image_url: { url: `data:image/png;base64,${base64}` } }]
+                userMessageContent.push({
+                    type: 'image',
+                    source: {
+                        type: 'base64',
+                        media_type: 'image/png',
+                        data: base64
+                    }
                 });
             });
         }
+
+        const messages = [{ role: "user", content: userMessageContent }];
 
         const claudeModel = process.env.CLAUDE_MODEL || 'claude-3.5-mini';
         const response = await axios.post(
